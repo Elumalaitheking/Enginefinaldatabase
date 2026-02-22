@@ -11,9 +11,22 @@ const imageModal = document.getElementById('image-modal');
 const modalImage = document.getElementById('modal-image');
 const closeModal = document.getElementById('close-modal');
 
+const API_BASE = (window.__ENGINE_API_BASE__ || '').replace(/\/$/, '');
+
+const api = (path) => `${API_BASE}${path}`;
+
 const setMessage = (el, msg, isError = false) => {
   el.textContent = msg;
   el.style.color = isError ? '#b91c1c' : '#6b7280';
+};
+
+const extractError = async (res, fallback) => {
+  try {
+    const body = await res.json();
+    return body.error || fallback;
+  } catch {
+    return fallback;
+  }
 };
 
 const resetForm = () => {
@@ -54,28 +67,45 @@ const renderEngineDetails = (engine) => {
 };
 
 const loadEngines = async () => {
-  const res = await fetch('/api/engines');
-  const engines = await res.json();
+  try {
+    const res = await fetch(api('/api/engines'));
+    if (!res.ok) {
+      const msg = await extractError(res, 'Failed to load engines list.');
+      setMessage(searchMessage, msg, true);
+      return;
+    }
 
-  engineList.innerHTML = engines
-    .map((engine) => `<li class="engine-item" onclick="window.searchByName('${engine.engineName}')">${engine.engineName}</li>`)
-    .join('');
+    const engines = await res.json();
+    engineList.innerHTML = engines
+      .map((engine) => `<li class="engine-item" onclick="window.searchByName('${engine.engineName}')">${engine.engineName}</li>`)
+      .join('');
+  } catch {
+    setMessage(
+      searchMessage,
+      'Backend API is unreachable. For GitHub Pages, set window.__ENGINE_API_BASE__ to your backend URL.',
+      true
+    );
+  }
 };
 
 const searchByName = async (name) => {
   const target = name || searchInput.value.trim();
   if (!target) return;
 
-  const res = await fetch(`/api/engines/search?engineName=${encodeURIComponent(target)}`);
-  if (!res.ok) {
-    detailContainer.classList.add('hidden');
-    setMessage(searchMessage, 'Engine not found.', true);
-    return;
-  }
+  try {
+    const res = await fetch(api(`/api/engines/search?engineName=${encodeURIComponent(target)}`));
+    if (!res.ok) {
+      detailContainer.classList.add('hidden');
+      setMessage(searchMessage, await extractError(res, 'Engine not found.'), true);
+      return;
+    }
 
-  const engine = await res.json();
-  setMessage(searchMessage, 'Engine loaded successfully.');
-  renderEngineDetails(engine);
+    const engine = await res.json();
+    setMessage(searchMessage, 'Engine loaded successfully.');
+    renderEngineDetails(engine);
+  } catch {
+    setMessage(searchMessage, 'Search failed: backend API unavailable.', true);
+  }
 };
 
 form.addEventListener('submit', async (e) => {
@@ -84,25 +114,28 @@ form.addEventListener('submit', async (e) => {
 
   const data = new FormData(form);
   const id = engineIdInput.value;
-  const endpoint = id ? `/api/engines/${id}` : '/api/engines';
+  const endpoint = id ? api(`/api/engines/${id}`) : api('/api/engines');
   const method = id ? 'PUT' : 'POST';
 
-  const res = await fetch(endpoint, {
-    method,
-    body: data,
-  });
+  try {
+    const res = await fetch(endpoint, {
+      method,
+      body: data,
+    });
 
-  const payload = await res.json();
+    if (!res.ok) {
+      setMessage(formMessage, await extractError(res, 'Failed to save engine.'), true);
+      return;
+    }
 
-  if (!res.ok) {
-    setMessage(formMessage, payload.error || 'Failed to save engine.', true);
-    return;
+    const payload = await res.json();
+    setMessage(formMessage, id ? 'Engine updated successfully.' : 'Engine saved successfully.');
+    resetForm();
+    await loadEngines();
+    renderEngineDetails(payload);
+  } catch {
+    setMessage(formMessage, 'Save failed: backend API unavailable.', true);
   }
-
-  setMessage(formMessage, id ? 'Engine updated successfully.' : 'Engine saved successfully.');
-  resetForm();
-  await loadEngines();
-  renderEngineDetails(payload);
 });
 
 searchBtn.addEventListener('click', () => searchByName());
@@ -121,44 +154,59 @@ imageModal.addEventListener('click', (e) => {
 window.searchByName = searchByName;
 
 window.populateForEdit = async (id) => {
-  const res = await fetch(`/api/engines/${id}`);
-  if (!res.ok) return;
+  try {
+    const res = await fetch(api(`/api/engines/${id}`));
+    if (!res.ok) {
+      setMessage(formMessage, await extractError(res, 'Failed to load engine for edit.'), true);
+      return;
+    }
 
-  const engine = await res.json();
-  engineIdInput.value = engine._id;
-  form.engineName.value = engine.engineName;
-  form.airFilter.value = engine.airFilter || '';
-  form.lastLoadedTestbed.value = engine.lastLoadedTestbed || '';
-  form.remarks.value = engine.remarks || '';
-  setMessage(formMessage, 'Editing mode enabled. Save to apply changes.');
+    const engine = await res.json();
+    engineIdInput.value = engine._id;
+    form.engineName.value = engine.engineName;
+    form.airFilter.value = engine.airFilter || '';
+    form.lastLoadedTestbed.value = engine.lastLoadedTestbed || '';
+    form.remarks.value = engine.remarks || '';
+    setMessage(formMessage, 'Editing mode enabled. Save to apply changes.');
+  } catch {
+    setMessage(formMessage, 'Edit failed: backend API unavailable.', true);
+  }
 };
 
 window.deleteEngine = async (id) => {
   const confirmed = window.confirm('Delete this engine and all images?');
   if (!confirmed) return;
 
-  const res = await fetch(`/api/engines/${id}`, { method: 'DELETE' });
-  const payload = await res.json();
-  if (!res.ok) {
-    setMessage(searchMessage, payload.error || 'Delete failed.', true);
-    return;
-  }
+  try {
+    const res = await fetch(api(`/api/engines/${id}`), { method: 'DELETE' });
+    if (!res.ok) {
+      setMessage(searchMessage, await extractError(res, 'Delete failed.'), true);
+      return;
+    }
 
-  detailContainer.classList.add('hidden');
-  setMessage(searchMessage, payload.message);
-  await loadEngines();
+    const payload = await res.json();
+    detailContainer.classList.add('hidden');
+    setMessage(searchMessage, payload.message);
+    await loadEngines();
+  } catch {
+    setMessage(searchMessage, 'Delete failed: backend API unavailable.', true);
+  }
 };
 
 window.deleteImage = async (engineId, imageId) => {
-  const res = await fetch(`/api/engines/${engineId}/images/${imageId}`, { method: 'DELETE' });
-  const payload = await res.json();
-  if (!res.ok) {
-    setMessage(searchMessage, payload.error || 'Image delete failed.', true);
-    return;
-  }
+  try {
+    const res = await fetch(api(`/api/engines/${engineId}/images/${imageId}`), { method: 'DELETE' });
+    if (!res.ok) {
+      setMessage(searchMessage, await extractError(res, 'Image delete failed.'), true);
+      return;
+    }
 
-  setMessage(searchMessage, payload.message);
-  await searchByName(searchInput.value.trim() || detailContainer.querySelector('h3')?.textContent);
+    const payload = await res.json();
+    setMessage(searchMessage, payload.message);
+    await searchByName(searchInput.value.trim() || detailContainer.querySelector('h3')?.textContent);
+  } catch {
+    setMessage(searchMessage, 'Image delete failed: backend API unavailable.', true);
+  }
 };
 
 loadEngines();

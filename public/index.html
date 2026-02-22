@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Engine Records Dashboard</title>
-    <link rel="stylesheet" href="/css/styles.css" />
+    <link rel="stylesheet" href="./css/styles.css" />
   </head>
   <body>
     <div class="container">
@@ -60,6 +60,14 @@
           <h2>All Engines</h2>
           <ul id="engine-list" class="engine-list"></ul>
         </section>
+
+        <section class="card full-width">
+          <h2>Deployment Notice</h2>
+          <p id="deployment-note" class="message">
+            If this page is hosted on GitHub Pages, configure a backend API URL by setting
+            <code>window.__ENGINE_API_BASE__</code> before <code>app.js</code>, or run this app via Node.js/Express.
+          </p>
+        </section>
       </main>
     </div>
 
@@ -68,6 +76,6 @@
       <img id="modal-image" src="" alt="Zoomed engine" />
     </div>
 
-    <script src="/js/app.js"></script>
+    <script src="./js/app.js"></script>
   </body>
 </html>
