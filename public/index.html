@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Engine Records Dashboard</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header class="header">
+        <h1>Engine Records Dashboard</h1>
+        <p>Manage engine data, images, and quick search in one place.</p>
+      </header>
+
+      <main class="dashboard-grid">
+        <section class="card">
+          <h2>Add / Update Engine</h2>
+          <form id="engine-form">
+            <input type="hidden" id="engine-id" />
+            <div class="field-group">
+              <label for="engine-name">Engine Name *</label>
+              <input id="engine-name" name="engineName" type="text" required />
+            </div>
+            <div class="field-group">
+              <label for="air-filter">Air Filter</label>
+              <input id="air-filter" name="airFilter" type="text" />
+            </div>
+            <div class="field-group">
+              <label for="last-loaded">Last Loaded Testbed</label>
+              <input id="last-loaded" name="lastLoadedTestbed" type="text" placeholder="YYYY-MM-DD or text" />
+            </div>
+            <div class="field-group">
+              <label for="remarks">Remarks</label>
+              <textarea id="remarks" name="remarks" rows="3"></textarea>
+            </div>
+            <div class="field-group">
+              <label for="images">Upload Images (max 10)</label>
+              <input id="images" name="images" type="file" accept="image/*" multiple />
+            </div>
+            <div class="button-row">
+              <button type="submit" class="btn primary">Save Engine</button>
+              <button type="button" id="reset-form" class="btn">Clear</button>
+            </div>
+          </form>
+          <p id="form-message" class="message"></p>
+        </section>
+
+        <section class="card">
+          <h2>Search Engine</h2>
+          <div class="search-row">
+            <input id="search-input" type="text" placeholder="Search by engine name" />
+            <button id="search-btn" class="btn primary">Search</button>
+          </div>
+          <p id="search-message" class="message"></p>
+          <div id="engine-detail" class="engine-detail hidden"></div>
+        </section>
+
+        <section class="card full-width">
+          <h2>All Engines</h2>
+          <ul id="engine-list" class="engine-list"></ul>
+        </section>
+      </main>
+    </div>
+
+    <div id="image-modal" class="modal hidden">
+      <button id="close-modal" class="modal-close">×</button>
+      <img id="modal-image" src="" alt="Zoomed engine" />
+    </div>
+
+    <script src="/js/app.js"></script>
+  </body>
+</html>
